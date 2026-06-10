@@ -55,6 +55,12 @@ class SparkMaxStatus:
     def get_status_frame(self, Status_Frame_Index):
         return self.status_frames[Status_Frame_Index]
 
+    def update_data(self):
+        self.get_frame_1()
+        self.get_frame_2()
+        self.get_frame_3()
+        self.get_frame_4()
+
     def get_frame_1(self):
         frame = self.get_status_frame(1)
         if frame is None:
@@ -64,8 +70,15 @@ class SparkMaxStatus:
 
         self.current = int(format(data[7], '08b') + format(data[6], '08b')[4:8], 2)/32.0
         self.voltage = int(format(data[6], '08b')[0:4] + format(data[5], '08b'), 2)/256.0
-        self.velocity = struct.unpack('<f', bytes(data[0:4]))[0]
+        #self.velocity = struct.unpack('<f', bytes(data[0:4]))[0]
+
+        # Frame 1 voltage decode
+        voltage_raw = ((data[6] & 0x0F) << 8) | data[5]
+        self.voltage = voltage_raw / 128.0
+
+
         self.temperature = int(format(data[4], '08b'), 2)
+
         self.update_status_frame(1, None)
         
         return (self.velocity, self.temperature, self.voltage, self.current)
