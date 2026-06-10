@@ -1,7 +1,5 @@
 
 
-
-
 import csv
 import time
 import sys
@@ -27,21 +25,26 @@ def HeaderWrite():
 def DataToCSV(device_id):
     
     with open(f'MotorDataLog{device_id}.csv', 'a', newline='') as f:
+        smc.status_array[device_id].get_frame_1()
+        smc.status_array[device_id].get_frame_2()
+        smc.status_array[device_id].get_frame_3()
+        smc.status_array[device_id].get_frame_4()
+
         csv.writer(f).writerow([
             f'SparkMax{device_id}',
-            smc.status_array[device_id].velocity,
-            smc.status_array[device_id].temperature,
-            smc.status_array[device_id].voltage,
-            smc.status_array[device_id].current,
-            smc.status_array[device_id].position,
-            smc.status_array[device_id].ac_voltage,
-            smc.status_array[device_id].analog_velocity,
-            smc.status_array[device_id].analog_sensor_position,
-            smc.status_array[device_id].alternate_encoder_velocity,
-            smc.status_array[device_id].alternate_encoder_position
+            f'{smc.status_array[device_id].velocity}',
+            f'{smc.status_array[device_id].temperature}',
+            f'{smc.status_array[device_id].voltage}',
+            f'{smc.status_array[device_id].current}',
+            f'{smc.status_array[device_id].position}',
+            f'{smc.status_array[device_id].ac_voltage}',
+            f'{smc.status_array[device_id].analog_velocity}',
+            f'{smc.status_array[device_id].analog_sensor_position}',
+            f'{smc.status_array[device_id].alternate_encoder_velocity}',
+            f'{smc.status_array[device_id].alternate_encoder_position}'
         ])
         
-        time.sleep(0.5)  # 1/2s between reads
+        time.sleep(0.01)  # 1/2s between reads
         
 
 
