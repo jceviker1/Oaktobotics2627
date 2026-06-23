@@ -1,3 +1,4 @@
+# Old file. Not very useful anymore
 import time
 import threading
 import random
