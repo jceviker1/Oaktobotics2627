@@ -17,11 +17,13 @@ class simplesocket:
     
     # HOST is what it's listening for. 0.0.0.0 is for all ip adresses (recomended)
     # Do not make listening and sending PORTs the same
-    def __init__(self, HOST, PORT, begin=True, pause=0.1):
+    # bytes is how many bytes the socket will be recieving at once. If a message is longer, it gets truncated. Max bytes is 65535
+    def __init__(self, HOST, PORT, bytes=1024, begin=True, pause=0.1):
         self.HOST = HOST
         self.PORT = PORT
 
         self.start_time = 0.0
+        self.bytes = bytes
         self.lock = threading.Lock() # Idk why declare here vs outside the class, but I put it here bc claude did. Should work either way i think
 
         # always use lock for these variables
@@ -44,7 +46,7 @@ class simplesocket:
         try:
             while True:
                 try:
-                    recv_data, addr = self.server.recvfrom(1024)
+                    recv_data, addr = self.server.recvfrom(self.bytes)
                 except ConnectionResetError: # with windows, this bug shows up if it's sending and nobody is listening.
                     continue
                 with self.lock:
@@ -60,6 +62,7 @@ class simplesocket:
         self.start_time = time.time()
 
         # this is to prevent peak bandwidth from spiking right at the start
+        # technically bandwidth is still spiking, but nasa only meassures average, so this does actually work
         if pause > 0:
             time.sleep(pause)
         
@@ -81,6 +84,7 @@ class simplesocket:
             self.total_size += len(send_data) * 8 / (1024 * 1024) # Size in Mb
             self.peak_bandwidth = max(self.peak_bandwidth, self._get_bandwidth_nolock())
         self.server.sendto(send_data, (HOST, PORT))
+        return True if len(send_data) <= self.bytes else False
     
     def get_bandwidth(self):
         with self.lock:
