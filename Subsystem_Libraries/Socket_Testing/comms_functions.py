@@ -1,8 +1,16 @@
 '''
-
 TODO:
     - get_latency function
+    - current program assumes only one pit socket and one control
+      socket. This may cause issues, for example, with one image-sending
+      socket and one diagnostics socket.
     - there has got to be a better way to organize the functions
+    - currently each computer, assuming one socket each, meassures bandwidth
+      for data sent and for data recieved. For asynchonous starts and ends,
+      bandwidth meassured on each computer gets dysynchronized a little bit
+      with no effective method for finding the true bandwidth. This can
+      probably be fixed with a handshake on open and a message when the socket
+      closes.
     
 '''
 import time
