@@ -1,7 +1,7 @@
 # written by Avi to test integrating everything
 # Last updated in early October I think
 from Subsystem_Libraries.Motor_Controllers import SparkMax_Controller as smc
-from Subsystem_Libraries.Socket_Testing import Coms
+from Subsystem_Libraries.Simple_Socket import Coms
 from Subsystem_Libraries.Handheld_Controls import Controller
 import time
 

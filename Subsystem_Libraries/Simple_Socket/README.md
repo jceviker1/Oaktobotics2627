@@ -1,0 +1,1 @@
+A simplification of the socket library for us to communicate with the robot

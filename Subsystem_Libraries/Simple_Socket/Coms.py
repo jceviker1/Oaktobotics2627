@@ -1,18 +1,22 @@
 '''
+To use:
+    1. Initiate a socket server with a command such as:
+       server = SocketServer("0.0.0.0", 12345)
+    2. Send data to the server using the send_data function:
+       send_data("Hello, server!", ("Destination IP as a String", 12345))
+    3. Retrieve data (as a String) from the server using the get_data function:
+       some_awesome_new_data = server.get_data()
+    4. Clear any old data from the server using the clear_data function:
+       server.clear_data()
+    5. Get statistics like Bandwidth, Peak Bandwidth, and Latency (TODO) with the appropriate functions
+            (Bandwidth (Mbps) is counted when it is recieved by a socket. Send bandwidth is not counted.)
+    6. Close the server using the close function:
+       server.close()
+
 TODO:
     - get_latency function
-    - current program assumes only one pit socket and one control
-      socket. This may cause issues, for example, with one image-sending
-      socket and one diagnostics socket.
-    - there has got to be a better way to organize the functions
-    - currently each computer, assuming one socket each, meassures bandwidth
-      for data sent and for data recieved. For asynchonous starts and ends,
-      bandwidth meassured on each computer gets dysynchronized a little bit
-      with no effective method for finding the true bandwidth. This can
-      probably be fixed with a handshake on open and a message when the socket
-      closes.
-      - the code can work for video, but doing so will use a lot more bandwidth.
-      Use something like H.264 or H.265 for efficient video transmission.
+    - the code can work for video, but doing so will use a lot more bandwidth. Use something like H.264 or H.265 for efficient video transmission.
+    - _listener does not properly stop and close the server because ctrl+c is not caught by threads
     
 '''
 import time
@@ -23,7 +27,7 @@ import socket
 
 #-------------------CLASS DEFINITIONS------------------------------------------------------------------------------
 
-class simplesocket:
+class SocketServer:
     
     # HOST is what it's listening for. 0.0.0.0 is for all ip adresses (recomended)
     # Do not make listening and sending PORTs the same
@@ -34,7 +38,10 @@ class simplesocket:
 
         self.start_time = 0.0
         self.bytes = bytes
-        self.lock = threading.Lock() # Idk why declare here vs outside the class, but I put it here bc claude did. Should work either way i think
+        self.lock = threading.Lock()
+
+        self._running = threading.Event()
+        self._running.set()
 
         # always use lock for these variables
         self.new_data = None
@@ -53,19 +60,19 @@ class simplesocket:
         return self.total_size / timestamp if timestamp > 0 else 0
 
     def _listener(self):
-        try:
-            while True:
-                try:
-                    recv_data, addr = self.server.recvfrom(self.bytes)
-                except ConnectionResetError: # with windows, this bug shows up if it's sending and nobody is listening.
-                    continue
-                with self.lock:
-                    self.new_data = recv_data.decode()
-                    self.total_size += len(recv_data) * 8 / (1024 * 1024) # Size in Mb
-                    self.peak_bandwidth = max(self.peak_bandwidth, self._get_bandwidth_nolock())
-        except KeyboardInterrupt:
-            self.close()
-            print("Listener stopped.")
+        while self._running.is_set():
+            try:
+                recv_data, addr = self.server.recvfrom(self.bytes)
+            except ConnectionResetError: # with windows, this bug shows up if it's sending and nobody is listening.
+                continue
+            except OSError:
+                print("Server does not exist, ", end="")
+                break
+            with self.lock:
+                self.new_data = recv_data.decode()
+                self.total_size += len(recv_data) * 8 / (1024 * 1024) # Size in Mb
+                self.peak_bandwidth = max(self.peak_bandwidth, self._get_bandwidth_nolock())
+        print("Listener stopped.")
     
     def listen(self, pause=0.1):
         threading.Thread(target=self._listener, daemon=True).start()
@@ -75,6 +82,8 @@ class simplesocket:
         # technically bandwidth is still spiking, but nasa only meassures average, so this does actually work
         if pause > 0:
             time.sleep(pause)
+
+        print("Listener started.")
         
         return self.start_time
     
@@ -86,15 +95,6 @@ class simplesocket:
     def clear_data(self):
         with self.lock:
             self.new_data = None
-
-    # HOST and PORT are for the destination
-    def send(self, data, HOST, PORT):
-        send_data = str(data).encode()
-        with self.lock:
-            self.total_size += len(send_data) * 8 / (1024 * 1024) # Size in Mb
-            self.peak_bandwidth = max(self.peak_bandwidth, self._get_bandwidth_nolock())
-        self.server.sendto(send_data, (HOST, PORT))
-        return True if len(send_data) <= self.bytes else False
     
     def get_bandwidth(self):
         with self.lock:
@@ -110,4 +110,14 @@ class simplesocket:
             return self.total_size
     
     def close(self):
+        self._running.clear()
         self.server.close()
+
+# ------------------Functions--------------------------------------------------------------------------------------
+
+# addr is a tuple containing the host and port. Use the IP address of the destination.
+# if data is too large, it will be cut off
+# data is a string
+def send_data(data, addr):
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.sendto(data.encode(), addr)
